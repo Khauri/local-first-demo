@@ -1,0 +1,6 @@
+{
+  "include": [".marko-run/routes.d.ts"],
+  "compilerOptions": {
+    "lib": ["dom"]
+  }
+}

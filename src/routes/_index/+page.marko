@@ -1,29 +1,161 @@
-<div.container>
-  <header>
-    <img.logo src="./logo.svg" alt="Marko"/>
-  </header>
-  <main>
-    <p>Edit <code>./src/routes/_index/+page.marko</code> and save to reload.</p>
-    <a href="https://markojs.com/docs/getting-started">
-      Learn Marko
-    </a>
-  </main>
-</div>
-<mouse-mask/>
+import { perform } from '../../actions';
 
-style {
-  .container {
-    display:flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    font-size: clamp(1em, 2vw, 2em); 
-    padding: 1em;
-    box-sizing: border-box;
-    height:100%;
-    width:100%;
+static const menus = [
+  {
+    name: 'Breakfast',
+    products: [
+      {
+        name: 'Orange Juice',
+        price: 2000,
+      },
+      {
+        name: 'Pancakes',
+        price: 50000,
+      },
+      {
+        name: 'Bacon',
+        price: 30000,
+      }
+    ]
+  },
+  {
+    name: 'Lunch',
+    products: [
+      {
+        name: 'Burger',
+        price: 20000,
+      },
+      {
+        name: 'Fries',
+        price: 10000,
+      },
+      {
+        name: 'Soda',
+        price: 5000,
+      }
+    ]
+  },
+  {
+    name: 'Dinner',
+    products: [
+      {
+        name: 'Steak',
+        price: 40000,
+      },
+      {
+        name: 'Salad',
+        price: 15000,
+      },
+      {
+        name: 'Wine',
+        price: 20000,
+      }
+    ]
   }
-  img.logo {
-    width:12em;
+];
+
+<lifecycle
+  onMount() {
+    perform({type: 'listTabs', oid: 'all'});
   }
-}
+/>
+
+<let/selectedTabId = null />
+<let/isViewingMenu = false />
+<resource/selectedTab = `Tab:${selectedTabId}` />
+
+<div class="grid grid-cols-main h-full">
+  <!-- Tabs List -->
+  <div class="bg-gray-300 p-2 pt-3">
+    <resource/tabs="listTabs:all" />
+    <h1> My Tabs </h1>
+    <if=(!tabs)>
+      <div> Loading... </div>
+    </if>
+    <else>
+      <const/sorted = tabs.data.toSorted((a, b) => a.created - b.created) />
+      <for|tab| of=sorted by=(tab => tab.id)>
+        <div class="p-2" onClick(){ 
+          selectedTabId = tab.id; 
+          isViewingMenu = false;
+        }> 
+          ${tab.tab_name}
+        </div>
+      </for>
+      <button class="btn btn-blue" onClick(){
+        perform({type: 'createTab', oid: 'createTab', tab_name: 'New Tab'});
+        // invalidate('listTabs:all');
+      }> 
+        Create Tab 
+      </button>
+    </else>
+  </div>
+  <!-- Contextual -->
+  <div class="p-2 mt-3">
+    <if=!selectedTab>
+      <p> Select a tab </p>
+    </if>
+    <else>
+      <if=isViewingMenu>
+        <h2> Add to ${selectedTab.tab_name} </h2>
+        <for|menu| of=menus>
+          <div class="p-2"> 
+            <h2> ${menu.name} </h2>
+            <for|product| of=menu.products>
+              <div class="p-2 my-2 border" onClick(){
+                perform({type: 'addItemToTab', oid: `add:${selectedTab.id}`, product, quantity: 1, tab: selectedTab.id});
+                isViewingMenu = false;
+              }> 
+                ${product.name} - <money=product.price />
+              </div>
+            </for> 
+          </div>
+        </for>
+      </if>
+      <else>
+        <effect() {
+            perform({type: 'listTabItems', oid: selectedTab.id, tab: selectedTab.id});
+          }
+        />
+        <resource/items=`listTabItems:${selectedTab.id}` />
+        
+        <h1> ${selectedTab.tab_name} </h1>
+        <p> Balance Due: <money=selectedTab.balance_due /> </p>
+        
+        <if=items>
+          <for|item| of=items.data by=((item) => item.id)>
+            <div class="p-2"> 
+              ${item.name} - <money=item.price />
+              <button class="btn btn-red" onClick(){
+                perform({type: 'removeItemFromTab', oid: `remove:${item.id}`, item, tab: selectedTab.id})
+              }> Delete </button>
+            </div>
+          </for>
+        </if>
+        <button class="btn btn-blue" onClick(){
+          isViewingMenu = true
+        }> 
+          Add to Order 
+        </button>
+      </else>
+    </else>
+  </div>
+</div>
+
+<style>
+  .btn {
+    @apply font-bold py-2 px-4 rounded;
+  }
+  .btn-blue {
+    @apply bg-blue-500 text-white;
+  }
+  .btn-red {
+    @apply bg-red-500 text-white;
+  }
+  .btn-red:hover {
+    @apply bg-red-700;
+  }
+  .btn-blue:hover {
+    @apply bg-blue-700;
+  }
+</style>

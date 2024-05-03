@@ -4,7 +4,13 @@
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
-    "marko": "^5.33.5"
+    "@marko/tags-api-preview": "^0.7.5",
+    "autoprefixer": "^10.4.19",
+    "eventemitter3": "^5.0.1",
+    "marko": "^5.33.5",
+    "mobx": "^6.12.3",
+    "tailwindcss": "^3.4.3",
+    "zod": "^3.23.5"
   },
   "devDependencies": {
     "@marko/run": "^0.4.3"

@@ -1,0 +1,19 @@
+// This is a standard component that returns a resource whenever it changes
+// mobx is a good alternative to use here of course
+import {emitter, getResourceByReference} from '../actions.client';
+
+<attrs/{value} />
+<let/resource = getResourceByReference(value) />
+
+<effect() {
+  // This is a simple way to listen to changes in the value
+  // and update the resource accordingly
+  const update = () => { 
+    resource = getResourceByReference(value);
+  }
+  emitter.on(value, update);
+  update();
+  return () => emitter.off(value, update);
+} />
+
+<return = resource />

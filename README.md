@@ -1,23 +1,10 @@
-# Thanks for checking out Marko
+# Local First Demo
 
-# Installation
+This is a demo of a local-first web application written in Marko using Marko/Run for simplicity
 
-```
-npx @marko/create marko-app --template basic
-cd marko-app
-npm install
-npm run dev
-```
+## Generalizable ideas
 
-## Overview
-
-This project is powered by [@marko/run](https://github.com/marko-js/run).
-
-- Run `npm run dev` to start the development server
-- Run `npm run build` to build a production-ready node.js server
-- Run `npm run preview` to run the production server
-
-## Adding Pages
-
-Pages map to the directory structure. You can add additional pages by creating files/directories under `src/routes` with `+page.marko` files.  Learn more in the [`@marko/run` docs](https://github.com/marko-js/run/#file-based-routing).
-
+- All resources (documents) need to be clearly marked with a `type` and `id` which will create a unique reference for caching. e.g. `Tab:1`
+- Operations are also resources and can also be cached
+- Resources are flattened by replacing nested resources with refs. ie `ref:<type>:<id>`
+- The server and the browser are both clients to an imaginary higher power of data construction
