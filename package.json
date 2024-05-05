@@ -10,6 +10,7 @@
     "marko": "^5.33.5",
     "mobx": "^6.12.3",
     "tailwindcss": "^3.4.3",
+    "ulidx": "^2.3.0",
     "zod": "^3.23.5"
   },
   "devDependencies": {
@@ -21,5 +22,8 @@
     "build": "marko-run build",
     "preview": "marko-run preview",
     "start": "node --enable-source-maps ./dist/index.mjs"
+  },
+  "volta": {
+    "node": "22.1.0"
   }
 }

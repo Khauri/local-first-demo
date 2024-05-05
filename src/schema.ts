@@ -9,6 +9,7 @@ export const Item = z.object({
   price: z.number(),
   quantity: z.number(),
   created: z.number(),
+  status: z.string(),
 });
 
 export const Tab = z.object({
@@ -33,6 +34,7 @@ export const Spot = z.object({
 export const BaseOperation = z.object({
   type: z.string(),
   oid: z.string(),
+  shouldForward: z.boolean().optional().default(true),
 });
 
 export const ListTabs = BaseOperation.extend({
@@ -42,6 +44,7 @@ export const ListTabs = BaseOperation.extend({
 export const CreateTab = BaseOperation.extend({
   type: z.literal('createTab'),
   id: z.string().optional(),
+  tab_name: z.string().optional(),
 });
 
 export const AddItemToTab = BaseOperation.extend({

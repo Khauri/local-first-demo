@@ -49,12 +49,13 @@ export const listTabs: Adapter<typeof ListTabs> = async (op) => {
 };
 
 export const createTab: Adapter<typeof CreateTab> = async (op) => {
+  const id = op.id ?? Math.random().toString(36).substring(7);
   const tab = {
+    id,
     type: 'Tab',
-    id: op.id ?? Math.random().toString(36).substring(7),
-    tab_name: 'New Tab',
+    tab_name: op.tab_name ?? `Tab ${id}`,
     balance_due: 0,
-    status: 'PENDING',
+    status: 'OPEN',
     items: [],
     is_paid: false,
     created: Date.now(),
@@ -76,11 +77,14 @@ export const addItemToTab: Adapter<typeof AddItemToTab> = async (op) => {
     price: op.product.price,
     name: op.product.name,
     created: Date.now(),
+    status: 'ACTIVE',
   } satisfies z.infer<typeof Item>;
   tab.items.push(item);
+  console.log(item);
   return [tab];
 };
 
 export const listTabItems: Adapter<typeof ListTabItems> = async (op) => {
-  return []; 
+  const tab = db.find((resource) => resource.type === 'Tab' && resource.id === op.tab) as z.infer<typeof Tab> | undefined;
+  return tab?.items ?? [];
 };

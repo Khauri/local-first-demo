@@ -2,7 +2,7 @@
 // mobx is a good alternative to use here of course
 import {emitter, getResourceByReference} from '../actions.client';
 
-<attrs/{value} />
+<attrs/{value, onInvalidate} />
 <let/resource = getResourceByReference(value) />
 
 <effect() {
@@ -12,8 +12,14 @@ import {emitter, getResourceByReference} from '../actions.client';
     resource = getResourceByReference(value);
   }
   emitter.on(value, update);
+  if(onInvalidate) {
+    emitter.on(`invalidate:${value}`, onInvalidate);
+  }
   update();
-  return () => emitter.off(value, update);
+  return () => {
+    emitter.off(value, update);
+    emitter.off(`invalidate:${value}`, onInvalidate);
+  }
 } />
 
 <return = resource />

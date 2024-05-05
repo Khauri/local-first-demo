@@ -2,7 +2,7 @@ import * as z from 'zod';
 import { Operation } from './schema';
 import { flattenResources } from './utils';
 
-export type Adapter<T extends z.ZodTypeAny = any> = (operation: z.input<T>) => Promise<any[]> | any[];
+export type Adapter<T extends z.ZodTypeAny = any> = (operation: z.output<T>) => Promise<any[]> | any[];
 
 type AdapterRecord = {
   [key: string]: Adapter;
@@ -10,7 +10,9 @@ type AdapterRecord = {
   store?: (resources: any[]) => Promise<boolean>;
 };
 
-const defaultAdapter: AdapterRecord = typeof window !== 'undefined' ? await import('./actions.client') : await import('./actions.server');
+const defaultAdapter: AdapterRecord = typeof window !== 'undefined' 
+  ? await import('./actions.client') 
+  : await import('./actions.server');
 
 export async function perform(operation: z.input<typeof Operation>, adapter = defaultAdapter) {
   if(!adapter) {

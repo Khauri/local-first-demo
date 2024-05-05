@@ -3,7 +3,7 @@
  * This "predicts" what will happen on the server and returns the updated resources.
  */
 import * as z from 'zod';
-import {Tab, Spot, Item, CreateTab, AddItemToTab, RemoveItemFromTab, ListTabs, ListTabItems} from './schema';
+import {Tab, Spot, Item, CreateTab, AddItemToTab, RemoveItemFromTab, ListTabs, ListTabItems, BaseOperation} from './schema';
 import type { Adapter } from './actions';
 import EventEmitter from 'eventemitter3';
 import { flattenResources } from './utils';
@@ -65,7 +65,20 @@ export function getResourceByReference<T = any>(ref: string) {
   return resource as T;
 }
 
-async function forwardOperation(op: any) {
+async function forwardOperation(op: z.infer<typeof BaseOperation>, opts: {invalidate?: string[]} = {}) {
+  if(!op.shouldForward) {
+    return;
+  }
+  // On the next tick we will invalidate the resources that are affected by this operation
+  // Ideally these should only be client-side predictions and not forward operations.
+  // This is tricky with the current architecture. Will need to think this a bit as you can currently spam a button and it will cause weird UI behavior
+  setTimeout(() => {
+    if(opts.invalidate) {
+      for(const ref of opts.invalidate) {
+        emitter.emit('invalidate:' + ref, false);
+      }
+    }
+  }, 0);
   // TODO: Detect when offline and queue operations for later (with restrictions. Not all operations can be forwarded when offline)
   const response = await fetch('/api/perform', {
     method: 'POST',
@@ -77,14 +90,21 @@ async function forwardOperation(op: any) {
     return;
   }
   const result = await response.json();
-  store({
+  await store({
     type: op.type,
     id: op.oid,
     data: result,
   });
+  // After storing the resources, we can again run the invalidation logic, this time forward operations are available
+  if(opts.invalidate) {
+    for(const ref of opts.invalidate) {
+      emitter.emit('invalidate:' + ref, true);
+    }
+  }
 }
 
 export const listTabs: Adapter<typeof ListTabs> = async (op) => {
+  console.log('Listing tabs', op);
   forwardOperation(op);
   // Implementing searching/querying logic client-side is too complex for this demo but it could be done for sure
   const cachedTabs = Array.from(cache.values()).filter((resource) => resource.type === 'Tab');
@@ -92,15 +112,18 @@ export const listTabs: Adapter<typeof ListTabs> = async (op) => {
 };
 
 export const createTab: Adapter<typeof CreateTab> = async (op) => {
-  forwardOperation(op);
-  // Creating a tab creates a new tab and a new order.
+  // listTabs will be invalidated once a new tab is created
+  // TODO: support multiple resources by allowing invalidation by type
+  op.id ??= id();
+  forwardOperation(op, {invalidate: ['listTabs:all']});
+  // Creating a tab creates a new tab
   // Note: it doesn't matter how you create these objects (e.g. use websql, firebase, generate it offline, or whatever you need)
   return [
     {
       type: 'Tab',
-      id: id(), // used for rendering/referencing in the UI
+      id: op.id, // used for rendering/referencing in the UI
       status: 'PENDING',
-      tab_name: 'New Tab',
+      tab_name: `Tab ${op.id}`,
       balance_due: 0,
       is_paid: false,
       items: [],
@@ -110,6 +133,7 @@ export const createTab: Adapter<typeof CreateTab> = async (op) => {
 }
 
 export const addItemToTab: Adapter<typeof AddItemToTab> = async (op) => {
+  op.id ??= id();
   forwardOperation(op);
   // Depending on circumstances, we might make this return an immutable copy
   const tab = getResourceByReference<z.infer<typeof Tab>>(`Tab:${op.tab}`);
@@ -119,14 +143,15 @@ export const addItemToTab: Adapter<typeof AddItemToTab> = async (op) => {
   tab.balance_due += op.quantity * op.product.price;
   const item = {
     type: 'Item',
-    id: id(),
+    id: op.id,
     quantity: op.quantity,
     price: op.product.price,
     name: op.product.name,
     created: Date.now(),
+    status: 'PENDING',
   } satisfies z.infer<typeof Item>;
   tab.items = [...tab.items ?? [], item];
-
+  console.log(item);
   return [
     tab,
     item, // Since tab.items contains this already, it's not necessary to return it, but it doesn't hurt
@@ -145,10 +170,9 @@ export const removeItemFromTab: Adapter<typeof RemoveItemFromTab> = async (op) =
   ];
 }
 
-export const listTabItems = async (op: z.input<typeof ListTabItems>) => {
+export const listTabItems: Adapter<typeof ListTabItems> = async (op) => {
   forwardOperation(op);
   const tab = getResourceByReference<z.infer<typeof Tab>>(`Tab:${op.tab}`);
-  console.log(tab);
   if(!tab) {
     throw new Error('Tab not found');
   }
