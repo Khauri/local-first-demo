@@ -6,7 +6,7 @@
 import * as z from 'zod';
 
 import { Adapter } from "./actions";
-import { Tab, Item, AddItemToTab, CreateTab, ListTabItems, ListTabs } from "./schema";
+import { Tab, Item, AddItemToTab, CreateTab, ListTabItems, ListTabs, RemoveItemFromTab } from "./schema";
 
 type Resource = z.infer<typeof Tab> | z.infer<typeof Item>;
 
@@ -83,6 +83,21 @@ export const addItemToTab: Adapter<typeof AddItemToTab> = async (op) => {
   console.log(item);
   return [tab];
 };
+
+export const removeItemFromTab: Adapter<typeof RemoveItemFromTab> = async (op) => {
+  const tab = db.find((resource) => resource.type === 'Tab' && resource.id === op.tab) as z.infer<typeof Tab> | undefined;
+  if(!tab) {
+    throw new Error('Tab not found');
+  }
+  const item = tab.items.find((item) => item.id === op.item);
+  if(!item) {
+    throw new Error('Item not found');
+  }
+  const cost = item.quantity * item.price;
+  tab.balance_due -= cost;
+  tab.items = tab.items.filter((item) => item.id !== op.item);
+  return [tab];
+}
 
 export const listTabItems: Adapter<typeof ListTabItems> = async (op) => {
   const tab = db.find((resource) => resource.type === 'Tab' && resource.id === op.tab) as z.infer<typeof Tab> | undefined;

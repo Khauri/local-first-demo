@@ -1,0 +1,27 @@
+import {onNetworkStatusChange} from '../offline';
+import { emitter } from '../actions.client';
+
+<let/isOffline = false />
+<let/isSyncing = false />
+
+<effect() {
+  const unregister = onNetworkStatusChange((offline: boolean) => {
+    console.log({offline})
+    isOffline = offline;
+  });
+  const onSync = (status) => {
+    isSyncing = status;
+  }
+  emitter.on('syncing', onSync);
+  return () => {
+    unregister();
+    emitter.off('syncing', onSync);
+  }
+} />
+
+<if=isOffline>
+  <div class="h-150px bg-yellow-200 d-flex flex-0"> You are currently offline </div>
+</if>
+<if=isSyncing>
+  <div class="h-150px bg-blue-200 d-flex flex-0"> Syncing... </div>
+</if>

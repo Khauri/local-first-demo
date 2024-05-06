@@ -54,75 +54,77 @@ static const menus = [
   }
 ];
 
-<lifecycle
-  onMount() {
-    perform({type: 'listTabs', oid: 'all'});
-  }
-/>
-
 <let/selectedTabId = null />
 <let/isViewingMenu = false />
 <resource/selectedTab = `Tab:${selectedTabId}` />
 
-<div class="grid grid-cols-main h-full">
-  <!-- Tabs List -->
-  <div class="bg-gray-300 p-2 pt-3">
-    <resource/tabs="listTabs:all" 
-      onInvalidate(shouldForward = false) {
-        perform({type: 'listTabs', oid: 'all', shouldForward});
-      }
-    />
-    <h1> My Tabs </h1>
-    <if=(!tabs)>
-      <div> Loading... </div>
-    </if>
-    <else>
-      <const/sorted = tabs.data.toSorted((a, b) => a.created - b.created) />
-      <for|tab| of=sorted by=(tab => tab.id)>
-        <div class="p-2" onClick(){ 
-          selectedTabId = tab.id; 
-          isViewingMenu = false;
-        }> 
-          <p>${tab.tab_name}</p>
-          <p>${tab.status}</p>
-        </div>
-      </for>
-      <button class="btn btn-blue" onClick() {
-        // This action will also invalidate listTabs, but it may be better to explicitly invalidate it here?
-        perform({type: 'createTab', oid: 'createTab'});
-      }> 
-        Create Tab 
-      </button>
-    </else>
-  </div>
-  <!-- Contextual -->
-  <div class="p-2 mt-3">
-    <if=!selectedTab>
-      <p> Select a tab </p>
-    </if>
-    <else>
-      <if=isViewingMenu>
-        <h2> Add to ${selectedTab.tab_name} </h2>
-        <for|menu| of=menus>
-          <div class="p-2"> 
-            <h2> ${menu.name} </h2>
-            <for|product| of=menu.products>
-              <div class="p-2 my-2 border" onClick() {
-                perform({type: 'addItemToTab', oid: `add:${selectedTab.id}`, product, quantity: 1, tab: selectedTab.id});
-                isViewingMenu = false;
-              }> 
-                ${product.name} - <money=product.price />
-              </div>
-            </for> 
-          </div>
-        </for>
+<div class="h-full flex flex-col">
+  <offline-banner />
+  <div class="grid grid-cols-main flex-1">
+    <!-- Tabs List -->
+    <div class="bg-gray-300 p-2 pt-3">
+      <resource/tabs="listTabs:all" 
+        onInvalidate(shouldForward = false) {
+          perform({type: 'listTabs', oid: 'all'}, {shouldForward});
+        }
+      />
+      <h1> My Tabs </h1>
+      <if=(!tabs)>
+        <div> Loading... </div>
       </if>
       <else>
-        <effect() {
-            perform({type: 'listTabItems', oid: selectedTab.id, tab: selectedTab.id});
-          }
+        <const/sorted = tabs.data.toSorted((a, b) => a.created - b.created) />
+        <for|tab| of=sorted by=(tab => tab.id)>
+          <div class=['p-2 cursor-pointer', {pulse: tab.status === 'PENDING'}] onClick(){ 
+            selectedTabId = tab.id; 
+            isViewingMenu = false;
+          }> 
+            <p>${tab.tab_name}</p>
+            <p>${tab.status}</p>
+          </div>
+        </for>
+        <button class="btn btn-blue" onClick() {
+          // This action will also invalidate listTabs, but it may be better to explicitly invalidate it here?
+          perform({type: 'createTab', oid: 'createTab'})
+            // NOTE: In a real application you shouldn't rely on the tab being returned here as the first argument
+            // Instead more thought should be put into how you might be able to use the result of an action
+            .then(([{data: [tab]}]) => {
+              selectedTabId = tab.id;
+            });
+        }> 
+          Create Tab 
+        </button>
+      </else>
+    </div>
+    <!-- Contextual -->
+    <div class="p-2 mt-3 relative">
+      <if=!selectedTab>
+        <p> Select a tab </p>
+      </if>
+      <else>
+        <if=isViewingMenu>
+          <div class="absolute inset-0 bg-white z-10">
+            <h2> Add to ${selectedTab.tab_name} </h2>
+            <for|menu| of=menus>
+              <div class="p-2"> 
+                <h2> ${menu.name} </h2>
+                <for|product| of=menu.products>
+                  <div class="p-2 my-2 border" onClick() {
+                    perform({type: 'addItemToTab', oid: `add:${selectedTab.id}`, product, quantity: 1, tab: selectedTab.id});
+                    isViewingMenu = false;
+                  }> 
+                    ${product.name} - <money=product.price />
+                  </div>
+                </for> 
+              </div>
+            </for>
+          </div>
+        </if>
+        <resource/items=`listTabItems:${selectedTab.id}` 
+          onInvalidate(shouldForward = false) {
+            perform({type: 'listTabItems', oid: selectedTab.id, tab: selectedTab.id}, {shouldForward});
+          } 
         />
-        <resource/items=`listTabItems:${selectedTab.id}` />
         
         <h1> ${selectedTab.tab_name} </h1>
         <p> Status: ${selectedTab.status} </p>
@@ -130,11 +132,16 @@ static const menus = [
         
         <if=items>
           <for|item| of=items.data by=((item) => item.id)>
-            <div class="p-2"> 
-              ${item.name} - <money=item.price />
-              <button class="btn btn-red" onClick(){
-                perform({type: 'removeItemFromTab', oid: `remove:${item.id}`, item, tab: selectedTab.id})
-              }> Delete </button>
+            <div class=["p-2 flex"]> 
+              <p class=["flex-[300px]", {"pulse text-red-200": item.status === 'REMOVING', "opacity-50": item.status === 'PENDING'}]> ${item.name} - <money=item.price /> </p>
+              <button 
+                class="btn btn-red flex-0" 
+                disabled=(item.status === 'REMOVING') 
+                onClick() {
+                  perform({type: 'removeItemFromTab', oid: `remove:${item.id}`, item: item.id, quantity: 1, tab: selectedTab.id})
+                }> 
+                Delete 
+              </button>
             </div>
           </for>
         </if>
@@ -144,7 +151,7 @@ static const menus = [
           Add to Order 
         </button>
       </else>
-    </else>
+    </div>
   </div>
 </div>
 
@@ -161,7 +168,14 @@ static const menus = [
   .btn-red:hover {
     @apply bg-red-700;
   }
+  .btn-red:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
   .btn-blue:hover {
     @apply bg-blue-700;
+  }
+
+  .pulse {
+    @apply animate-pulse;
   }
 </style>

@@ -9,13 +9,17 @@ import {emitter, getResourceByReference} from '../actions.client';
   // This is a simple way to listen to changes in the value
   // and update the resource accordingly
   const update = () => { 
-    resource = getResourceByReference(value);
+    const rsrc = resource = getResourceByReference(value);
+    return rsrc;
   }
   emitter.on(value, update);
   if(onInvalidate) {
     emitter.on(`invalidate:${value}`, onInvalidate);
   }
-  update();
+  let initialValue = update();
+  if(!initialValue) {
+    onInvalidate?.(true);
+  }
   return () => {
     emitter.off(value, update);
     emitter.off(`invalidate:${value}`, onInvalidate);

@@ -48,8 +48,30 @@ One possible way would be to update the list in your action, but this can be cum
 
 ## FAQ
 
-If I create a resource on the client and sync it to the server, how will I know which resource is being edited when it comes back from the server?
+> If I create a resource on the client and sync it to the server, how will I know which resource is being edited when it comes back from the server?
 
 In most cases you should generate a UUID on the client and this UUID will be used for the resource. More specifically you could generate a [ULID](https://github.com/oklog/ulid). ULID's/UUID's have strong guarantees that when created in a decentralized environment you are unlikely to experience collisions. However, for very large tables, indexing a uuid might have massive performance costs. (This might be where you consider database sharding).
 
 In other cases it might be better to deterministically create an id based on properties of the resource. For example, a new item on a tab might have an id consisting of the tab id + product id + hash of the modifiers selected. This can be especially good for a table that might have so many rows that it's not feasible to index a uuid or check for collisions, therefor a deterministically generated id that's guaranteed to be unique for each row not only solves some performance issues, but is also reconstructable in various environments without specifically passing around a generated id.
+
+> What happens when you're offline? 
+
+Your operations are placed in a queue and then played back when you're online. Ideally this queue should be stored in an external location such as indexeddb or localStorage. (It may be worth noting that any action you take offline can be lost if you clear your cache or your device gets lost or something.)
+
+When forwarding actions to a server, the server may need to properly detect when a conflict occurs. This conflict should trigger an appropriate warning or error message on the device and offer some conflict resolution steps if necessary.
+
+It's _very_ important that the UI reflect that some particular actions are still pending, and when necessary, prevent the user from performing other actions when updates are pending.
+
+> What happens when you come back online and multiple updates cause the UI to freak out due to things like statuses in the cache being overwritten.
+
+To avoid UI jank we might want the ability to "freeze" the UI while the sync is in progress.
+Or optionally, we may intelligently dedupe certain updates. For example, a call to list the tabs or tab items doesn't necessarily need to be run multiple times. Only the last instance needs to be run.
+
+> What if multiple users are on the same device but have different permissions? How will the offline cache work?
+
+There are two main options:
+
+1. Structure the ids for your actions such that they include the user's id or other identifiable information
+2. Clear the cache (or clear specific values) when the user is switched
+
+The former is good if it's okay to re-use _some_ information from a previous session on the same device. The latter is better if you want more hardened security. Both can be used together

@@ -11,9 +11,20 @@ declare module "@marko/run" {
 	interface AppData extends Run.DefineApp<{
 		routes: {
 			"/": Routes["/_index"];
+			"/api/health": Routes["/api/health"];
 			"/api/perform": Routes["/api/perform"];
 		}
 	}> {}
+}
+
+declare module "../src/routes/api/health+handler" {
+  namespace MarkoRun {
+    export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
+    export type Route = Run.Routes["/api/health"];
+    export type Context = Run.MultiRouteContext<Route>;
+    export type Handler = Run.HandlerLike<Route>;
+    export const route: Run.HandlerTypeFn<Route>;
+  }
 }
 
 declare module "../src/routes/api/perform+handler" {
@@ -51,5 +62,6 @@ declare module "../src/routes/+layout.marko" {
 
 type Routes = {
 	"/_index": { verb: "get"; meta: typeof import("../src/routes/_index/+meta.json"); };
+	"/api/health": { verb: "get"; };
 	"/api/perform": { verb: "post"; };
 }
